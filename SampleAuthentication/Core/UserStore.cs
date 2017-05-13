@@ -13,7 +13,8 @@ namespace Core
                                 IUserPasswordStore<TUser>,
                                 IUserLoginStore<TUser>,
                                 IUserPhoneNumberStore<TUser>,
-                                IUserTwoFactorStore<TUser>
+                                IUserTwoFactorStore<TUser>,
+                                IUserRoleStore<TUser>
         where TUser : IdentityUser
     {
 
@@ -43,7 +44,13 @@ namespace Core
             }
         }
         private UserClaimsTable userClaimsTable;
-        private UserLoginsTable userLoginsTable;
+        private UserLoginsTable userLoginsTable
+        {
+            get
+            {
+                return new UserLoginsTable(Database);
+            }
+        }
 
         public MsSqlDatabase Database
         {
@@ -73,7 +80,7 @@ namespace Core
         {
             // These references are lost
             userClaimsTable = new UserClaimsTable(database);
-            userLoginsTable = new UserLoginsTable(database);
+            //userLoginsTable = new UserLoginsTable(database);
         }
 
         private bool _disposed;
@@ -112,7 +119,19 @@ namespace Core
 
         public Task<IList<UserLoginInfo>> GetLoginsAsync(TUser user, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            List<UserLoginInfo> userLogins = new List<UserLoginInfo>();
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            List<UserLoginInfo> logins = userLoginsTable.FindByUserId(user.Id);
+            if (logins != null)
+            {
+                return Task.FromResult<IList<UserLoginInfo>>(logins);
+            }
+
+            return Task.FromResult<IList<UserLoginInfo>>(null);
         }
 
 
@@ -257,14 +276,32 @@ namespace Core
 
 
 
-        public Task<IdentityResult> UpdateAsync(TUser user, CancellationToken cancellationToken)
+        public async Task<IdentityResult> UpdateAsync(TUser user, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            userTable.Update(user);
+
+            return IdentityResult.Success;
         }
 
         Task<TUser> IUserStore<TUser>.FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new ArgumentException("Null or empty argument: userId");
+            }
+
+            TUser result = userTable.GetUserById(userId);
+            if (result != null)
+            {
+                return Task.FromResult<TUser>(result);
+            }
+
+            return Task.FromResult<TUser>(null);
         }
 
         Task<TUser> IUserLoginStore<TUser>.FindByLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
@@ -328,5 +365,76 @@ namespace Core
             return Task.FromResult<IList<Claim>>(identity.Claims.ToList());
         }
 
+        public Task AddToRoleAsync(TUser user, string roleName, CancellationToken cancellationToken)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (string.IsNullOrEmpty(roleName))
+            {
+                throw new ArgumentException("Argument cannot be null or empty: roleName.");
+            }
+
+            string roleId = roleTable.GetRoleId(roleName);
+            if (!string.IsNullOrEmpty(roleId))
+            {
+                userRolesTable.Insert(user, roleId);
+            }
+
+            return Task.FromResult<object>(null);
+        }
+
+        public Task RemoveFromRoleAsync(TUser user, string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IList<string>> GetRolesAsync(TUser user, CancellationToken cancellationToken)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            List<string> roles = userRolesTable.FindByUserId(user.Id);
+            {
+                if (roles != null)
+                {
+                    return Task.FromResult<IList<string>>(roles);
+                }
+            }
+
+            return Task.FromResult<IList<string>>(null);
+        }
+
+        public Task<bool> IsInRoleAsync(TUser user, string roleName, CancellationToken cancellationToken)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (string.IsNullOrEmpty(roleName))
+            {
+                throw new ArgumentNullException("role");
+            }
+
+            List<string> roles = userRolesTable.FindByUserId(user.Id);
+            {
+                if (roles != null && roles.Contains(roleName))
+                {
+                    return Task.FromResult<bool>(true);
+                }
+            }
+
+            return Task.FromResult<bool>(false);
+        }
+
+        public Task<IList<TUser>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
