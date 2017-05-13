@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,23 @@ namespace Core
 
             }
         }
+        private RoleTable roleTable
+        {
+            get
+            {
+                return new RoleTable(Database);
+            }
+        }
+        private UserRolesTable userRolesTable
+        {
+            get
+            {
+                return new UserRolesTable(Database);
+            }
+        }
+        private UserClaimsTable userClaimsTable;
+        private UserLoginsTable userLoginsTable;
+
         public MsSqlDatabase Database
         {
             get
@@ -53,12 +71,9 @@ namespace Core
 
         public UserStore(MsSqlDatabase database)
         {
-            Database = database;
-            userTable = new UserTable<TUser>(database);
-            //roleTable = new RoleTable(database);
-            //userRolesTable = new UserRolesTable(database);
-            //userClaimsTable = new UserClaimsTable(database);
-            //userLoginsTable = new UserLoginsTable(database);
+            // These references are lost
+            userClaimsTable = new UserClaimsTable(database);
+            userLoginsTable = new UserLoginsTable(database);
         }
 
         private bool _disposed;
@@ -283,6 +298,35 @@ namespace Core
             }
         }
 
+        /// <summary>
+        /// Returns the roles for a given IdentityUser
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        public Task<IList<string>> GetRolesAsync(IdentityUser user)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            List<string> roles = userRolesTable.FindByUserId(user.Id);
+            {
+                if (roles != null)
+                {
+                    return Task.FromResult<IList<string>>(roles);
+                }
+            }
+
+            return Task.FromResult<IList<string>>(null);
+        }
+
+        public Task<IList<Claim>> GetClaimsAsync(IdentityUser user)
+        {
+            ClaimsIdentity identity = userClaimsTable.FindByUserId(user.Id);
+
+            return Task.FromResult<IList<Claim>>(identity.Claims.ToList());
+        }
 
     }
 }

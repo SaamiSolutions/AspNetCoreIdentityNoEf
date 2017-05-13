@@ -59,15 +59,17 @@ namespace SampleAuthentication
             //services.AddSingleton<IUserClaimsPrincipalFactory<IdentityUser>>(userPrincipalFactory);
 
             //var roleStore = new RoleStore();
-            var userPrincipalFactory = new ExampleUserPrincipalFactory();
+            //var userPrincipalFactory = new ExampleUserPrincipalFactory();
             services.AddSingleton<IUserStore<IdentityUser>, UserStore<IdentityUser>>();
             services.AddSingleton<IRoleStore<IdentityRole>, RoleStore<IdentityRole>>();
-            services.AddSingleton<IUserClaimsPrincipalFactory<IdentityUser>>(userPrincipalFactory);
+            //services.AddSingleton<IUserClaimsPrincipalFactory<IdentityUser>>(userPrincipalFactory);
 
             services.AddIdentity<IdentityUser, IdentityRole>(options =>
             {
-                options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@";                
-            }).AddDefaultTokenProviders();
+                options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@";
+            })
+            .AddDefaultTokenProviders()
+            .AddClaimsPrincipalFactory<ExampleUserPrincipalFactory>();
 
             services.AddMvc();
 
